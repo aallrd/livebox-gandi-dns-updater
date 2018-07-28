@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
 import argparse
+import json
 import os
 
-from requests import get, post, exceptions
+from requests import get, post, exceptions, put
 
 GANDI_API_TOKEN = None
 GANDI_DOMAINS = []
@@ -27,7 +28,8 @@ def get_domain_records(domain):
     global GANDI_API_TOKEN
     try:
         uri = "https://dns.api.gandi.net/api/v5/domains/{}/records".format(domain)
-        r = get(uri, headers={'X-Api-Key': GANDI_API_TOKEN})
+        headers = {'X-Api-Key': GANDI_API_TOKEN}
+        r = get(uri, headers=headers)
         if not r.status_code == 200:
             raise exceptions.HTTPError("HTTP error: {}: {}".format(r.status_code, r.reason))
         else:
@@ -38,7 +40,7 @@ def get_domain_records(domain):
         raise Exception("Unhandled exception while trying to retrieve the records for domain {}: {}".format(domain, e))
 
 
-def get_configured_www_ip(records):
+def get_records_www_ip(records):
     ip = None
     try:
         for record in records:
@@ -51,6 +53,35 @@ def get_configured_www_ip(records):
             return ip
     except Exception as e:
         raise Exception(e)
+
+
+def update_gandi_domain_records(records, old_ip, new_ip):
+    try:
+        for record in records:
+            for index, rrset_value in enumerate(record['rrset_values']):
+                if rrset_value == old_ip:
+                    record['rrset_values'][index] = new_ip
+        return records
+    except Exception as e:
+        raise Exception("Failure while updating the IP address for domain records: {}".format(e))
+
+
+def push_updated_domain_records(domain, updated_records):
+    global GANDI_API_TOKEN
+    try:
+        uri = "https://dns.api.gandi.net/api/v5/domains/{}/records".format(domain)
+        headers = {'X-Api-Key': GANDI_API_TOKEN, 'Content-Type': 'application/json'}
+        data = {'items': updated_records}
+        r = put(uri, headers=headers, data=json.dumps(data))
+        r.raise_for_status()
+        print("Records updated for domain {}".format(domain))
+    except exceptions.HTTPError:
+        raise exceptions.HTTPError("HTTP error: {}: {}".format(r.status_code, r.json()))
+    except exceptions.RequestException as e:
+        raise Exception("Failed to push the updated records for domain {}: {}".format(domain, e))
+    except Exception as e:
+        raise Exception(
+            "Unhandled exception while trying to push the updated records for domain {}: {}".format(domain, e))
 
 
 def get_livebox_wan_ip():
@@ -82,12 +113,17 @@ def main():
     try:
         parse_args()
         livebox_ip = get_livebox_wan_ip()
-        print("Livebox IP: {}".format(livebox_ip))
+        print("Livebox WAN IP: {}".format(livebox_ip))
         for domain in GANDI_DOMAINS:
             print("Checking domain: {}".format(domain))
             records = get_domain_records(domain)
-            gandi_ip = get_configured_www_ip(records)
-            print("Gandi WWW IP for {}: {}".format(domain, gandi_ip))
+            gandi_ip = get_records_www_ip(records)
+            if not gandi_ip == livebox_ip:
+                print("The IP address for domain {} must be updated ({}).".format(domain, gandi_ip))
+                updated_domain_records = update_gandi_domain_records(records, gandi_ip, livebox_ip)
+                push_updated_domain_records(domain, updated_domain_records)
+            else:
+                print("The IP address configured for domain {} is valid: {}.".format(domain, gandi_ip))
     except Exception as e:
         print(e)
 
