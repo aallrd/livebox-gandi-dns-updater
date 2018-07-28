@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 
+import argparse
 import os
 
 from requests import get, post, exceptions
+
+GANDI_API_TOKEN = None
+GANDI_DOMAINS = []
 
 
 def get_gandi_api_token():
@@ -20,10 +24,14 @@ def get_gandi_domains():
 
 
 def get_domain_records(domain):
+    global GANDI_API_TOKEN
     try:
         uri = "https://dns.api.gandi.net/api/v5/domains/{}/records".format(domain)
-        r = get(uri, headers={'X-Api-Key': get_gandi_api_token()})
-        return r.json()
+        r = get(uri, headers={'X-Api-Key': GANDI_API_TOKEN})
+        if not r.status_code == 200:
+            raise exceptions.HTTPError("HTTP error: {}: {}".format(r.status_code, r.reason))
+        else:
+            return r.json()
     except exceptions.RequestException as e:
         raise Exception("Failed to retrieve the records for domain {}: {}".format(domain, e))
     except Exception as e:
@@ -57,19 +65,31 @@ def get_livebox_wan_ip():
         raise Exception("Unhandled exception while querying the livebox webservices: {}".format(e))
 
 
+def parse_args():
+    global GANDI_API_TOKEN, GANDI_DOMAINS
+    parser = argparse.ArgumentParser(description='Update the DNS records for Gandi registered domains.')
+    parser.add_argument('--api-token', dest='api_token', action='store',
+                        help='The Gandi API token to use.')
+    parser.add_argument('--domains', dest='domains', action='store',
+                        help='A comma separated list of domains to update.')
+    args = parser.parse_args()
+    GANDI_API_TOKEN = args.api_token if args.api_token else get_gandi_api_token()
+    GANDI_DOMAINS = args.domains.split(',') if args.domains else get_gandi_domains()
+
+
 def main():
+    global GANDI_DOMAINS
     try:
-        get_gandi_api_token()
-        domains = get_gandi_domains()
+        parse_args()
         livebox_ip = get_livebox_wan_ip()
         print("Livebox IP: {}".format(livebox_ip))
-        for domain in domains:
+        for domain in GANDI_DOMAINS:
             print("Checking domain: {}".format(domain))
             records = get_domain_records(domain)
             gandi_ip = get_configured_www_ip(records)
             print("Gandi WWW IP for {}: {}".format(domain, gandi_ip))
     except Exception as e:
-        print("Something bad happened: {}".format(e))
+        print(e)
 
 
 if __name__ == "__main__":
