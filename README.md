@@ -34,3 +34,13 @@ The Gandi API token and the list of domains to update can also be set from the e
 
     export GANDI_API_TOKEN=MY-GANDI-API-TOKEN
     export GANDI_DOMAINS=foo.com,bar.fr
+    
+## Docker
+
+### Build
+
+    docker build . -t aallrd/livebox-gandi-dns-updater
+    
+### Run
+
+    docker run --rm -ti aallrd/livebox-gandi-dns-updater --help
