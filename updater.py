@@ -2,9 +2,16 @@
 
 import argparse
 import json
+import logging
 import os
 
 from requests import get, post, exceptions, put
+
+logger = logging.getLogger('updater')
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(formatter)
+logger.addHandler(console_handler)
 
 GANDI_API_TOKEN = None
 GANDI_DOMAINS = []
@@ -74,7 +81,7 @@ def push_updated_domain_records(domain, updated_records):
         data = {'items': updated_records}
         r = put(uri, headers=headers, data=json.dumps(data))
         r.raise_for_status()
-        print("Records updated for domain {}".format(domain))
+        logger.info("Records updated for domain {}".format(domain))
     except exceptions.HTTPError:
         raise exceptions.HTTPError("HTTP error: {}: {}".format(r.status_code, r.json()))
     except exceptions.RequestException as e:
@@ -103,7 +110,11 @@ def parse_args():
                         help='The Gandi API token to use.')
     parser.add_argument('--domains', dest='domains', action='store',
                         help='A comma separated list of domains to update.')
+    parser.add_argument('--log', dest='log_level', action='store',
+                        help='The log level to display.', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
+                        default='INFO')
     args = parser.parse_args()
+    logger.setLevel(getattr(logging, args.log_level, None))
     GANDI_API_TOKEN = args.api_token if args.api_token else get_gandi_api_token()
     GANDI_DOMAINS = args.domains.split(',') if args.domains else get_gandi_domains()
 
@@ -113,19 +124,19 @@ def main():
     try:
         parse_args()
         livebox_ip = get_livebox_wan_ip()
-        print("Livebox WAN IP: {}".format(livebox_ip))
+        logger.info("Livebox WAN IP: {}".format(livebox_ip))
         for domain in GANDI_DOMAINS:
-            print("Checking domain: {}".format(domain))
+            logger.info("Checking domain: {}".format(domain))
             records = get_domain_records(domain)
             gandi_ip = get_records_www_ip(records)
             if not gandi_ip == livebox_ip:
-                print("The IP address for domain {} must be updated ({}).".format(domain, gandi_ip))
+                logger.info("The IP address for domain {} must be updated ({}).".format(domain, gandi_ip))
                 updated_domain_records = update_gandi_domain_records(records, gandi_ip, livebox_ip)
                 push_updated_domain_records(domain, updated_domain_records)
             else:
-                print("The IP address configured for domain {} is valid: {}.".format(domain, gandi_ip))
+                logger.info("The IP address configured for domain {} is valid: {}.".format(domain, gandi_ip))
     except Exception as e:
-        print(e)
+        logger.error(e)
 
 
 if __name__ == "__main__":
