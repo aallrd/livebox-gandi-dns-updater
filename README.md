@@ -8,18 +8,21 @@ A Gandi API token is required to access the LiveDNS API: http://doc.livedns.gand
 
 ## Usage:
 
-    usage: updater.py [-h] [-t API_TOKEN] [-d DOMAINS]
-                  [-r {A,AAAA,CAA,CDS,CNAME,DNAME,DS,LOC,MX,NS,PTR,SPF,SRV,SSHFP,TLSA,TXT,WKS}]
-                  [-l {DEBUG,INFO,WARNING,ERROR,CRITICAL}] [--dry-run]
-                  [--set-ip CUSTOM_IP]
-
+    usage: updater.py [-h] [-d] [-i TIME] [-t API_TOKEN] [-n DOMAINS]
+                      [-r {A,AAAA,CAA,CDS,CNAME,DNAME,DS,LOC,MX,NS,PTR,SPF,SRV,SSHFP,TLSA,TXT,WKS}]
+                      [-l {DEBUG,INFO,WARNING,ERROR,CRITICAL}] [--dry-run]
+                      [--set-ip CUSTOM_IP]
+    
     Update the DNS records for Gandi registered domains.
     
     optional arguments:
       -h, --help            show this help message and exit
+      -d, --daemon          Run in background.
+      -i TIME, --interval TIME
+                            Time interval between checks. Default is 10800sec.
       -t API_TOKEN, --api-token API_TOKEN
                             The Gandi API token to use.
-      -d DOMAINS, --domains DOMAINS
+      -n DOMAINS, --domains DOMAINS
                             A comma separated list of domains to update.
       -r {A,AAAA,CAA,CDS,CNAME,DNAME,DS,LOC,MX,NS,PTR,SPF,SRV,SSHFP,TLSA,TXT,WKS}, --records {A,AAAA,CAA,CDS,CNAME,DNAME,DS,LOC,MX,NS,PTR,SPF,SRV,SSHFP,TLSA,TXT,WKS}
                             The record type to update. Default is all.
