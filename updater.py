@@ -4,6 +4,7 @@ import argparse
 import json
 import logging
 import os
+import sys
 import time
 
 from requests import get, post, exceptions, put
@@ -189,6 +190,8 @@ def main():
                 time.sleep(time_interval)
         except Exception as e:
             logger.error(e)
+            sys.exit(1)
+    sys.exit(0)
 
 
 if __name__ == "__main__":
