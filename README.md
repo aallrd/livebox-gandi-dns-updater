@@ -1,5 +1,10 @@
 # livebox-gandi-dns-updater
 
+Arch|Build|Size|Docker Hub
+---|---|---|---
+x86-64|[![Build Status](https://travis-ci.org/aallrd/livebox-gandi-dns-updater.svg?branch=master)](https://travis-ci.org/aallrd/livebox-gandi-dns-updater)|34 MB|[here](https://hub.docker.com/r/aallrd/livebox-gandi-dns-updater/)
+arm32v7|[![Build Status](https://travis-ci.org/aallrd/livebox-gandi-dns-updater.svg?branch=master)](https://travis-ci.org/aallrd/livebox-gandi-dns-updater)|52 MB|[here](https://hub.docker.com/r/aallrd/livebox-gandi-dns-updater/)
+
 Update the DNS records for Gandi registered domains based on the current Livebox WAN address.
 
 No static IP is available with the Orange ISP.
@@ -39,6 +44,12 @@ The Gandi API token and the list of domains to update can also be set from the e
     export GANDI_DOMAINS=foo.com,bar.fr
     
 ## Docker
+
+### Multi-arch build
+
+The *arm32v7* docker image should be buildable on an x86-64 platform thanks to QEMU and the build script in this repo.
+
+    ./build.sh
 
 ### Build
 
