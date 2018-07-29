@@ -1,7 +1,8 @@
-FROM python:3.7-slim
+FROM amd64/python:3.7-alpine3.8
 
 LABEL maintainer="aallrd"
 LABEL version="1.0"
+LABEL arch="amd64"
 LABEL description="Update the DNS records for Gandi \
 registered domains based on the current Livebox WAN address."
 LABEL project="https://github.com/aallrd/livebox-gandi-dns-updater"

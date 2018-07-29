@@ -104,3 +104,6 @@ venv.bak/
 .mypy_cache/
 .idea/
 
+# docker build
+*.tar.gz
+qemu-*-static
