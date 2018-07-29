@@ -114,7 +114,7 @@ def get_livebox_wan_ip():
     try:
         params = '''{"service":"NMC","method":"getWANStatus","parameters":{}}'''
         headers = {"Content-type": "application/x-sah-ws-4-call+json"}
-        r = post("http://livebox/ws", headers=headers, data=params).json()
+        r = post("http://livebox.local/ws", headers=headers, data=params).json()
         logger.debug("Livebox WS response: {}".format(r))
         livebox_wan_ip = r["data"]["IPAddress"]
         logger.info("Livebox WAN IP: {}".format(livebox_wan_ip))
