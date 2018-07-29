@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: livebox-gandi-dns-updater-deployment
+  labels:
+    app: livebox-gandi-dns-updater
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: livebox-gandi-dns-updater
+  template:
+    metadata:
+      labels:
+        app: livebox-gandi-dns-updater
+    spec:
+      containers:
+      - name: livebox-gandi-dns-updater
+        image: aallrd/livebox-gandi-dns-updater:latest
+        env:
+          - name: GANDI_API_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: gandi-api
+                key: token
+          - name: GANDI_DOMAINS
+            valueFrom:
+              secretKeyRef:
+                name: gandi-domains
+                key: domains
+        args: ["-d", "--log=INFO"]
+      restartPolicy: Always
