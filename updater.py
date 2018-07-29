@@ -4,6 +4,7 @@ import argparse
 import json
 import logging
 import os
+import time
 
 from requests import get, post, exceptions, put
 
@@ -59,7 +60,7 @@ def get_records_www_ip(records):
             if record["rrset_name"] == "www":
                 ip = record["rrset_values"][0]
                 break
-        if ip == None:
+        if ip is None:
             raise Exception("No IP configured in the WWW record.")
         else:
             return ip
@@ -126,9 +127,14 @@ def get_livebox_wan_ip():
 def parse_args():
     global GANDI_API_TOKEN, GANDI_DOMAINS, GANDI_RECORD_TYPES, DRY_RUN
     parser = argparse.ArgumentParser(description='Update the DNS records for Gandi registered domains.')
+    parser.add_argument('-d', '--daemon', dest='daemon', action='store_true',
+                        help='Run in background.')
+    parser.add_argument('-i', '--interval', dest='time', action='store',
+                        help='Time interval between checks. Default is %(default)ssec.',
+                        default=10800)
     parser.add_argument('-t', '--api-token', dest='api_token', action='store',
                         help='The Gandi API token to use.')
-    parser.add_argument('-d', '--domains', dest='domains', action='store',
+    parser.add_argument('-n', '--domains', dest='domains', action='store',
                         help='A comma separated list of domains to update.')
     parser.add_argument('-r', '--records', dest='records', action='store', choices=GANDI_RECORD_TYPES,
                         help='The record type to update. Default is %(default)s.', default='all')
@@ -143,11 +149,12 @@ def parse_args():
                              'Default is to extract the WAN address from the livebox on the LAN.')
     args = parser.parse_args()
     logger.setLevel(getattr(logging, args.log_level, None))
+    logger.debug("Daemon mode: {}".format(args.daemon))
+    if args.daemon: logger.debug("Time interval set: {}".format(args.time))
     GANDI_API_TOKEN = args.api_token if args.api_token else get_gandi_api_token()
     GANDI_DOMAINS = args.domains.split(',') if args.domains else get_gandi_domains()
     logger.debug("Targeted domains: {}".format(GANDI_DOMAINS))
-    if not args.records == "all":
-        GANDI_RECORD_TYPES = list(args.records)
+    if not args.records == "all": GANDI_RECORD_TYPES = list(args.records)
     logger.debug("Targeted record types: {}".format(GANDI_RECORD_TYPES))
     DRY_RUN = args.dry_run
     logger.debug("Dry run mode: {}".format(DRY_RUN))
@@ -157,25 +164,31 @@ def parse_args():
     else:
         wan_ip = get_livebox_wan_ip()
         logger.debug("Livebox WAN IP: {}".format(wan_ip))
-    return wan_ip
+    return wan_ip, args.daemon, int(args.time)
 
 
 def main():
     global GANDI_DOMAINS
-    try:
-        wan_ip = parse_args()
-        for domain in GANDI_DOMAINS:
-            logger.info("Checking domain: {}".format(domain))
-            records = get_domain_records(domain)
-            gandi_ip = get_records_www_ip(records)
-            if not gandi_ip == wan_ip:
-                logger.info("The IP address for domain {} must be updated ({}).".format(domain, gandi_ip))
-                updated_domain_records = update_gandi_domain_records(records, gandi_ip, wan_ip)
-                push_updated_domain_records(domain, updated_domain_records)
+    while True:
+        try:
+            wan_ip, daemon_mode, time_interval = parse_args()
+            for domain in GANDI_DOMAINS:
+                logger.info("Checking domain: {}".format(domain))
+                records = get_domain_records(domain)
+                gandi_ip = get_records_www_ip(records)
+                if not gandi_ip == wan_ip:
+                    logger.info("The IP address for domain {} must be updated ({}).".format(domain, gandi_ip))
+                    updated_domain_records = update_gandi_domain_records(records, gandi_ip, wan_ip)
+                    push_updated_domain_records(domain, updated_domain_records)
+                else:
+                    logger.info("The IP address configured for domain {} is valid: {}.".format(domain, gandi_ip))
+            if not daemon_mode:
+                break
             else:
-                logger.info("The IP address configured for domain {} is valid: {}.".format(domain, gandi_ip))
-    except Exception as e:
-        logger.error(e)
+                logger.debug("Sleeping for {}sec".format(time_interval))
+                time.sleep(time_interval)
+        except Exception as e:
+            logger.error(e)
 
 
 if __name__ == "__main__":
